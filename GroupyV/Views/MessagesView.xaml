@@ -1,0 +1,584 @@
+<UserControl x:Class="GroupyV.Views.MessagesView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:vm="clr-namespace:GroupyV.ViewModels"
+             mc:Ignorable="d"
+             d:DesignHeight="700" d:DesignWidth="1200"
+             d:DataContext="{d:DesignInstance Type=vm:MessagesViewModel}">
+
+    <UserControl.Resources>
+
+        <!-- Bool → Visibility -->
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+
+        <!-- Inverse Bool → Visibility -->
+        <Style x:Key="HideWhenTrue" TargetType="FrameworkElement">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding}" Value="True">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding}" Value="False">
+                    <Setter Property="Visibility" Value="Visible"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Conversation list item -->
+        <Style x:Key="ConvItemContainer" TargetType="ListBoxItem">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="6,2"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="bg" CornerRadius="12"
+                                Background="Transparent"
+                                Padding="12,10">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bg" Property="Background" Value="#1E2033"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="bg" Property="Background" Value="#2D304D"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Send button style -->
+        <Style x:Key="SendBtn" TargetType="Button">
+            <Setter Property="Width" Value="44"/>
+            <Setter Property="Height" Value="44"/>
+            <Setter Property="Background" Value="#6C5DD3"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bg" Background="{TemplateBinding Background}" CornerRadius="12">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bg" Property="Background" Value="#7D6FE8"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bg" Property="Background" Value="#5B4BB5"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="bg" Property="Background" Value="#3A3A5C"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- TextBox transparent -->
+        <Style x:Key="ChatInput" TargetType="TextBox">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="CaretBrush" Value="White"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Padding" Value="14,11"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border Background="{TemplateBinding Background}">
+                            <ScrollViewer x:Name="PART_ContentHost" VerticalScrollBarVisibility="Disabled"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+    </UserControl.Resources>
+
+    <!-- ════════════════════════ ROOT GRID ════════════════════════ -->
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="310" MinWidth="220"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- ════════ PANNEAU GAUCHE : Liste des conversations ════════ -->
+        <Border Grid.Column="0"
+                Background="#1A1C2E"
+                BorderBrush="#2D304D"
+                BorderThickness="0,0,1,0">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <!-- En-tête -->
+                    <RowDefinition Height="Auto"/>
+                    <!-- Recherche -->
+                    <RowDefinition Height="*"/>
+                    <!-- Liste -->
+                </Grid.RowDefinitions>
+
+                <!-- En-tête panneau gauche -->
+                <Border Grid.Row="0" Padding="18,20,18,14">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="Messages"
+                                       FontSize="18" FontWeight="Bold"
+                                       Foreground="White"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                <TextBlock Text="{Binding TotalUnread}"
+                                           Foreground="#6C5DD3" FontSize="12" FontWeight="SemiBold"/>
+                                <TextBlock Text=" non lu(s)"
+                                           Foreground="#808191" FontSize="12"
+                                           Visibility="{Binding HasUnreadBadge, Converter={StaticResource BoolToVis}}"/>
+                                <TextBlock Text="Aucun nouveau message"
+                                           Foreground="#808191" FontSize="12">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding HasUnreadBadge}" Value="False">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- Bouton refresh -->
+                        <Button Grid.Column="1"
+                                Command="{Binding RefreshCommand}"
+                                Width="32" Height="32"
+                                Background="#252836"
+                                BorderThickness="0"
+                                Cursor="Hand"
+                                ToolTip="Actualiser">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border x:Name="bg" Background="{TemplateBinding Background}" CornerRadius="8">
+                                        <TextBlock Text="↻" Foreground="#808191" FontSize="16"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="bg" Property="Background" Value="#2D304D"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <!-- Barre de recherche -->
+                <Border Grid.Row="1" Margin="10,0,10,10"
+                        Background="#151723"
+                        CornerRadius="10"
+                        BorderBrush="#3F4259"
+                        BorderThickness="1"
+                        Padding="10,8">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="&#x1F50D;" Grid.Column="0"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,8,0"
+                                   Foreground="#808191" FontSize="12"/>
+                        <TextBox Grid.Column="1"
+                                 Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource ChatInput}"
+                                 Padding="0"
+                                 ToolTip="Rechercher un client ou une prévente..."/>
+                    </Grid>
+                </Border>
+
+                <!-- Liste des conversations -->
+                <ListBox Grid.Row="2"
+                         ItemsSource="{Binding FilteredConversations}"
+                         SelectedItem="{Binding SelectedConversation, Mode=TwoWay}"
+                         ItemContainerStyle="{StaticResource ConvItemContainer}"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                         VirtualizingPanel.IsVirtualizing="True">
+
+                    <!-- État vide -->
+                    <ListBox.Style>
+                        <Style TargetType="ListBox">
+                            <Setter Property="Visibility" Value="Visible"/>
+                        </Style>
+                    </ListBox.Style>
+
+                    <ListBox.ItemTemplate>
+                        <DataTemplate DataType="{x:Type vm:ConversationItemVm}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="42"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Avatar client -->
+                                <Border Width="38" Height="38" CornerRadius="10"
+                                        VerticalAlignment="Center">
+                                    <Border.Background>
+                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                            <GradientStop Color="#059669" Offset="0"/>
+                                            <GradientStop Color="#10B981" Offset="1"/>
+                                        </LinearGradientBrush>
+                                    </Border.Background>
+                                    <TextBlock Text="{Binding ClientInitiales}"
+                                               Foreground="White"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               FontWeight="Bold"
+                                               FontSize="13"/>
+                                </Border>
+
+                                <!-- Nom + aperçu -->
+                                <StackPanel Grid.Column="1" Margin="10,0,6,0" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding ClientNomComplet}"
+                                               FontSize="13" Foreground="White"
+                                               TextTrimming="CharacterEllipsis">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="FontWeight" Value="Normal"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding HasUnread}" Value="True">
+                                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                    <TextBlock Text="{Binding NomProduit}"
+                                               FontSize="10" Foreground="#6C5DD3"
+                                               TextTrimming="CharacterEllipsis"
+                                               Margin="0,1,0,2"/>
+                                    <TextBlock Text="{Binding LastMessage}"
+                                               FontSize="11" Foreground="#808191"
+                                               TextTrimming="CharacterEllipsis"/>
+                                </StackPanel>
+
+                                <!-- Heure + badge non-lus -->
+                                <StackPanel Grid.Column="2"
+                                            VerticalAlignment="Center"
+                                            HorizontalAlignment="Right">
+                                    <TextBlock Text="{Binding TimeDisplay}"
+                                               FontSize="10" Foreground="#808191"
+                                               HorizontalAlignment="Right"/>
+                                    <Border Visibility="{Binding HasUnread, Converter={StaticResource BoolToVis}}"
+                                            Background="#6C5DD3"
+                                            CornerRadius="9"
+                                            MinWidth="18" Height="18"
+                                            HorizontalAlignment="Right"
+                                            Margin="0,4,0,0"
+                                            Padding="4,0">
+                                        <TextBlock Text="{Binding UnreadCount}"
+                                                   Foreground="White"
+                                                   FontSize="10" FontWeight="Bold"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"/>
+                                    </Border>
+                                </StackPanel>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <!-- Aucune conversation (état vide) -->
+                <StackPanel Grid.Row="2"
+                            VerticalAlignment="Center"
+                            HorizontalAlignment="Center"
+                            Margin="20">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding FilteredConversations.Count}" Value="0">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+                    <TextBlock Text="&#x1F4AC;" FontSize="36"
+                               HorizontalAlignment="Center" Margin="0,0,0,10"/>
+                    <TextBlock Text="Aucune conversation"
+                               Foreground="#808191" FontSize="13"
+                               HorizontalAlignment="Center" TextAlignment="Center"/>
+                    <TextBlock Text="Les clients vous contacteront depuis l'espace client web."
+                               Foreground="#505265" FontSize="11"
+                               HorizontalAlignment="Center" TextAlignment="Center"
+                               TextWrapping="Wrap" Margin="0,6,0,0"/>
+                </StackPanel>
+
+            </Grid>
+        </Border>
+
+        <!-- ════════ PANNEAU DROIT : Zone de chat ════════ -->
+        <Grid Grid.Column="1">
+
+            <!-- ── État vide : aucune conversation sélectionnée ── -->
+            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
+                        Visibility="{Binding HasNoConversationSelected, Converter={StaticResource BoolToVis}}">
+                <Border Width="80" Height="80" CornerRadius="40"
+                        HorizontalAlignment="Center" Margin="0,0,0,16">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="#1A1C2E" Offset="0"/>
+                            <GradientStop Color="#252836" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    <TextBlock Text="&#x1F4AC;" FontSize="36"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Border>
+                <TextBlock Text="Sélectionnez une conversation"
+                           Foreground="White" FontSize="16" FontWeight="SemiBold"
+                           HorizontalAlignment="Center"/>
+                <TextBlock Text="Choisissez une conversation dans la liste de gauche&#x0A;pour lire et répondre aux messages de vos clients."
+                           Foreground="#808191" FontSize="13"
+                           HorizontalAlignment="Center" TextAlignment="Center"
+                           TextWrapping="Wrap" Margin="0,8,0,0"/>
+            </StackPanel>
+
+            <!-- ── Zone de chat active ── -->
+            <Grid Visibility="{Binding HasConversationSelected, Converter={StaticResource BoolToVis}}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <!-- Header conversation -->
+                    <RowDefinition Height="*"/>
+                    <!-- Messages -->
+                    <RowDefinition Height="Auto"/>
+                    <!-- Zone saisie -->
+                </Grid.RowDefinitions>
+
+                <!-- Header de la conversation -->
+                <Border Grid.Row="0"
+                        Background="#151723"
+                        BorderBrush="#2D304D"
+                        BorderThickness="0,0,0,1"
+                        Padding="20,14">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Avatar -->
+                        <Border Width="42" Height="42" CornerRadius="11" VerticalAlignment="Center">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                    <GradientStop Color="#059669" Offset="0"/>
+                                    <GradientStop Color="#10B981" Offset="1"/>
+                                </LinearGradientBrush>
+                            </Border.Background>
+                            <TextBlock Text="{Binding SelectedConversation.ClientInitiales}"
+                                       Foreground="White" FontWeight="Bold" FontSize="15"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+
+                        <!-- Nom + prévente -->
+                        <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding SelectedConversation.ClientNomComplet}"
+                                       Foreground="White" FontSize="15" FontWeight="Bold"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                <TextBlock Text="Prévente : "
+                                           Foreground="#808191" FontSize="12"/>
+                                <TextBlock Text="{Binding SelectedConversation.NomProduit}"
+                                           Foreground="#6C5DD3" FontSize="12" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- Zone des messages -->
+                <Grid Grid.Row="1" Background="#0F111A">
+
+                    <!-- Indicateur de chargement -->
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
+                                Visibility="{Binding IsLoadingMessages, Converter={StaticResource BoolToVis}}">
+                        <TextBlock Text="Chargement…" Foreground="#808191" FontSize="13"
+                                   HorizontalAlignment="Center"/>
+                    </StackPanel>
+
+                    <!-- Messages -->
+                    <ScrollViewer x:Name="MessagesScrollViewer"
+                                  VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  Padding="16,12"
+                                  CanContentScroll="False">
+                        <ScrollViewer.Style>
+                            <Style TargetType="ScrollViewer">
+                                <Setter Property="Visibility" Value="Visible"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsLoadingMessages}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ScrollViewer.Style>
+
+                        <ItemsControl ItemsSource="{Binding Messages}" x:Name="MessagesItemsControl">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:ChatMessageVm}">
+                                    <Grid Margin="0,3">
+
+                                        <!-- Bulle de message -->
+                                        <Border x:Name="bubble"
+                                                MaxWidth="480"
+                                                Padding="13,9"
+                                                CornerRadius="4,16,16,16">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <!-- Défaut : message du client (gauche) -->
+                                                    <Setter Property="HorizontalAlignment" Value="Left"/>
+                                                    <Setter Property="Background" Value="#1E2033"/>
+                                                    <Setter Property="CornerRadius" Value="4,16,16,16"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsMine}" Value="True">
+                                                            <Setter Property="HorizontalAlignment" Value="Right"/>
+                                                            <Setter Property="Background" Value="#6C5DD3"/>
+                                                            <Setter Property="CornerRadius" Value="16,4,16,16"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+
+                                            <StackPanel>
+                                                <!-- Nom expéditeur (masqué pour mes propres messages) -->
+                                                <TextBlock Text="{Binding SenderName}"
+                                                           FontSize="10" FontWeight="SemiBold"
+                                                           Margin="0,0,0,4">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Foreground" Value="#45E3B8"/>
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsMine}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+
+                                                <!-- Contenu du message -->
+                                                <TextBlock Text="{Binding Contenu}"
+                                                           TextWrapping="Wrap"
+                                                           Foreground="White"
+                                                           FontSize="13"
+                                                           LineHeight="20"/>
+
+                                                <!-- Heure d'envoi -->
+                                                <TextBlock Text="{Binding TimeText}"
+                                                           FontSize="10"
+                                                           HorizontalAlignment="Right"
+                                                           Margin="0,5,0,0">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Foreground" Value="#505265"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsMine}" Value="True">
+                                                                    <Setter Property="Foreground" Value="#C0B9F0"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </StackPanel>
+                                        </Border>
+
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+
+                    <!-- Aucun message (état vide) -->
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <MultiDataTrigger>
+                                        <MultiDataTrigger.Conditions>
+                                            <Condition Binding="{Binding IsLoadingMessages}" Value="False"/>
+                                            <Condition Binding="{Binding Messages.Count}" Value="0"/>
+                                            <Condition Binding="{Binding HasConversationSelected}" Value="True"/>
+                                        </MultiDataTrigger.Conditions>
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </MultiDataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
+                        <TextBlock Text="&#x1F4EC;" FontSize="32" HorizontalAlignment="Center" Margin="0,0,0,10"/>
+                        <TextBlock Text="Aucun message pour l'instant"
+                                   Foreground="#808191" FontSize="13"
+                                   HorizontalAlignment="Center"/>
+                        <TextBlock Text="Envoyez le premier message à ce client."
+                                   Foreground="#505265" FontSize="11"
+                                   HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                    </StackPanel>
+
+                </Grid>
+
+                <!-- Zone de saisie -->
+                <Border Grid.Row="2"
+                        Background="#151723"
+                        BorderBrush="#2D304D"
+                        BorderThickness="0,1,0,0"
+                        Padding="16,12">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Champ de saisie -->
+                        <Border Background="#1A1C2E"
+                                CornerRadius="14"
+                                BorderBrush="#3F4259"
+                                BorderThickness="1">
+                            <TextBox x:Name="MessageInputBox"
+                                     Text="{Binding NewMessageText, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource ChatInput}"
+                                     MaxLength="2000"
+                                     IsEnabled="{Binding HasConversationSelected}"
+                                     ToolTip="Appuyez sur Entrée pour envoyer"
+                                     KeyDown="MessageInputBox_KeyDown"/>
+                        </Border>
+
+                        <!-- Bouton envoyer -->
+                        <Button Grid.Column="1"
+                                Command="{Binding SendMessageCommand}"
+                                Style="{StaticResource SendBtn}"
+                                Margin="10,0,0,0"
+                                ToolTip="Envoyer (Entrée)">
+                            <Path Data="M2,21 L23,12 L2,3 L2,10 L17,12 L2,14 Z"
+                                  Fill="White" Width="18" Height="18"
+                                  Stretch="Uniform"/>
+                        </Button>
+                    </Grid>
+                </Border>
+
+            </Grid>
+        </Grid>
+    </Grid>
+</UserControl>

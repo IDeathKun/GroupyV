@@ -1,0 +1,69 @@
+## .NET / Visual Studio
+
+# Build outputs
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio files
+.vs/
+*.user
+*.userosscache
+*.sln.docstates
+*.suo
+
+# NuGet
+*.nupkg
+*.snupkg
+packages/
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Publish output
+publish/
+[Pp]ublish/
+PublishProfiles/
+
+# Test results
+TestResults/
+[Tt]est[Rr]esult*/
+*.trx
+*.coverage
+*.coveragexml
+
+# Crash dumps
+*.dmp
+
+## Secrets & configuration locale — NE JAMAIS COMMITTER
+appsettings.json
+appsettings.*.json
+!appsettings.example.json
+
+# Variables d'environnement
+.env
+.env.*
+!.env.example
+
+## OS
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+## IDE
+# JetBrains
+.idea/
+*.iml
+
+# VS Code
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json

@@ -1,0 +1,231 @@
+﻿<Window x:Class="GroupyV.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        xmlns:vm="clr-namespace:GroupyV.ViewModels" 
+        xmlns:views="clr-namespace:GroupyV.Views"
+        Title="GroupyV" Height="950" Width="1550" MinWidth="1000" MinHeight="600"
+        WindowStartupLocation="CenterScreen" WindowStyle="None" 
+        AllowsTransparency="True" Background="Transparent" ResizeMode="CanResize">
+
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="0" ResizeBorderThickness="5" GlassFrameThickness="0" CornerRadius="0" />
+    </WindowChrome.WindowChrome>
+
+    <Window.Resources>
+        <DataTemplate DataType="{x:Type vm:DashboardViewModel}">
+            <views:DashboardView />
+        </DataTemplate>
+
+        <DataTemplate DataType="{x:Type vm:OrdersViewModel}">
+            <views:OrdersView />
+        </DataTemplate>
+
+        <DataTemplate DataType="{x:Type vm:OrderDetailViewModel}">
+            <views:OrderDetailView />
+        </DataTemplate>
+
+        <DataTemplate DataType="{x:Type vm:StockViewModel}">
+            <views:StockView />
+        </DataTemplate>
+
+        <DataTemplate DataType="{x:Type vm:StatisticsViewModel}">
+            <views:StatisticsView />
+        </DataTemplate>
+
+        <DataTemplate DataType="{x:Type vm:SettingsViewModel}">
+            <views:SettingsView />
+        </DataTemplate>
+
+        <DataTemplate DataType="{x:Type vm:MessagesViewModel}">
+            <views:MessagesView />
+        </DataTemplate>
+
+        <Style x:Key="CategoryHeader" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryColor}"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Margin" Value="25,20,0,10"/>
+        </Style>
+
+        <Style x:Key="DynamicNavBtn" TargetType="RadioButton">
+            <Setter Property="Height" Value="48"/>
+            <Setter Property="Margin" Value="15,2"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource NavTextInactive}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="12">
+                            <Grid>
+                                <Border x:Name="Indicator" HorizontalAlignment="Left" Width="3" Height="16" Background="White" CornerRadius="2" Margin="2,0,0,0" Visibility="Collapsed"/>
+                                <StackPanel Orientation="Horizontal" Margin="15,0">
+                                    <materialDesign:PackIcon Kind="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}" Width="20" Height="20" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{TemplateBinding Content}" Margin="12,0,0,0" FontSize="13" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="{DynamicResource NavHoverBg}"/>
+                                <Setter Property="Foreground" Value="White"/>
+                                <Setter Property="Cursor" Value="Hand"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="{DynamicResource AccentColor}"/>
+                                <Setter Property="Foreground" Value="White"/>
+                                <Setter TargetName="Indicator" Property="Visibility" Value="Visible"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="WindowBtn" TargetType="Button">
+            <Setter Property="Width" Value="40"/>
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Foreground" Value="{DynamicResource NavTextInactive}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="0,0,5,5">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Foreground" Value="White"/>
+                    <Setter Property="Background" Value="#33FFFFFF"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="LogoutButtonStyle" TargetType="Button">
+            <Setter Property="Height" Value="48"/>
+            <Setter Property="Margin" Value="15,10"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="12" Padding="15,0">
+                            <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Stretch"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#22FF5B5B"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#33FF5B5B"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Border x:Name="MainBorder" Background="{DynamicResource MainBgColor}" BorderBrush="{DynamicResource GlassBorder}" BorderThickness="1" ClipToBounds="True">
+        <Border.Style>
+            <Style TargetType="Border">
+                <Setter Property="CornerRadius" Value="30"/>
+                <Setter Property="Margin" Value="0"/>
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding WindowState, RelativeSource={RelativeSource AncestorType=Window}}" Value="Maximized">
+                        <Setter Property="Margin" Value="7"/>
+                        <Setter Property="CornerRadius" Value="0"/>
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+        </Border.Style>
+
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="260"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" Background="{DynamicResource SidebarColor}" BorderBrush="{DynamicResource GlassBorder}" BorderThickness="0,0,1,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0" Margin="25,40,25,20" Orientation="Horizontal" Background="Transparent" MouseLeftButtonDown="DragWindow">
+                        <Border Background="{DynamicResource AccentColor}" CornerRadius="10" Width="35" Height="35">
+                            <materialDesign:PackIcon Kind="RocketLaunch" Foreground="White" Width="22" Height="22" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <TextBlock Text="GroupyV" Foreground="{DynamicResource TextPrimaryColor}" FontSize="20" FontWeight="Bold" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                    </StackPanel>
+
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Hidden">
+                        <StackPanel>
+                            <TextBlock Text="GESTION MÉTIER" Style="{StaticResource CategoryHeader}"/>
+                            <RadioButton Content="Dashboard" Tag="ViewDashboard" Style="{StaticResource DynamicNavBtn}" IsChecked="True" Command="{Binding NavigateCommand}" CommandParameter="Dashboard"/>
+                            <RadioButton Content="Commandes" Tag="Cart" Style="{StaticResource DynamicNavBtn}" Command="{Binding NavigateCommand}" CommandParameter="Orders"/>
+                            <RadioButton Content="Inventaire" Tag="Box" Style="{StaticResource DynamicNavBtn}" Command="{Binding NavigateCommand}" CommandParameter="Stock"/>
+
+                            <TextBlock Text="ANALYSES &amp; SAV" Style="{StaticResource CategoryHeader}"/>
+                            <RadioButton Content="Statistiques" Tag="ChartLine" Style="{StaticResource DynamicNavBtn}" Command="{Binding NavigateCommand}" CommandParameter="Stats"/>
+                            <RadioButton Content="Messages" Tag="Forum" Style="{StaticResource DynamicNavBtn}" Command="{Binding NavigateCommand}" CommandParameter="Messages"/>
+
+                            <TextBlock Text="SYSTÈME" Style="{StaticResource CategoryHeader}"/>
+                            <RadioButton Content="Paramètres" Tag="Cog" Style="{StaticResource DynamicNavBtn}" Command="{Binding NavigateCommand}" CommandParameter="Settings"/>
+
+                            <Button Style="{StaticResource LogoutButtonStyle}" Command="{Binding LogoutCommand}" materialDesign:ButtonAssist.CornerRadius="12">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="Logout" Width="20" Height="20" Foreground="#FF5B5B"/>
+                                    <TextBlock Text="Déconnexion" Margin="12,0,0,0" Foreground="#FF5B5B" FontSize="13" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <Border Grid.Row="2" Margin="15,20" Background="{DynamicResource FooterBgColor}" CornerRadius="15" Padding="12">
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="35" Height="35" CornerRadius="8" Background="{DynamicResource AccentColor}">
+                                <TextBlock Text="{Binding UserInitials}" Foreground="White" FontWeight="Bold" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                            </Border>
+                            <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding UserName}" Foreground="{DynamicResource TextPrimaryColor}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" MaxWidth="115"/>
+                                <TextBlock Text="{Binding UserRole}" Foreground="#45E3B8" FontSize="10"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <Grid Grid.Column="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="35"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <Grid Grid.Row="0" Background="Transparent" MouseLeftButtonDown="DragWindow">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,0,10,0">
+                        <Button Style="{StaticResource WindowBtn}" Click="Minimize_Click">
+                            <materialDesign:PackIcon Kind="WindowMinimize"/>
+                        </Button>
+                        <Button Style="{StaticResource WindowBtn}" Click="Maximize_Click">
+                            <materialDesign:PackIcon Kind="WindowMaximize"/>
+                        </Button>
+                        <Button Style="{StaticResource WindowBtn}" Click="Close_Click" Background="Transparent">
+                            <materialDesign:PackIcon Kind="WindowClose"/>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+
+                <ContentControl Grid.Row="1" Content="{Binding CurrentView}" Margin="20"/>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>
