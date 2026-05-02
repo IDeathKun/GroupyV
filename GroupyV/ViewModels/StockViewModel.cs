@@ -1,4 +1,4 @@
-using GroupyV.Data;
+﻿using GroupyV.Data;
 using GroupyV.Helpers;
 using GroupyV.Models;
 using GroupyV.Services;
@@ -129,7 +129,7 @@ namespace GroupyV.ViewModels
         public string SearchText
         {
             get => _searchText;
-            set { _searchText = value; OnPropertyChanged(); ApplyFilter(); }
+            set { _searchText = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasSearchText)); ApplyFilter(); }
         }
 
         private string _selectedFilter = "Tous";
@@ -139,7 +139,18 @@ namespace GroupyV.ViewModels
             set { _selectedFilter = value; OnPropertyChanged(); ApplyFilter(); }
         }
 
-        public List<string> Filters { get; } = new() { "Tous", "En alerte", "Stock OK" };
+        // Compteurs pour les badges des filtres
+        private int _countTous;
+        public int CountTous { get => _countTous; set { _countTous = value; OnPropertyChanged(); } }
+
+        private int _countAlertes;
+        public int CountAlertes { get => _countAlertes; set { _countAlertes = value; OnPropertyChanged(); } }
+
+        private int _countOk;
+        public int CountOk { get => _countOk; set { _countOk = value; OnPropertyChanged(); } }
+
+        // Recherche : présence de texte (pour afficher le bouton effacer)
+        public bool HasSearchText => !string.IsNullOrEmpty(SearchText);
 
         // --- DIALOG MOUVEMENT ---
         private bool _isDialogOpen;
@@ -196,6 +207,37 @@ namespace GroupyV.ViewModels
             set { _dialogEmplacement = value; OnPropertyChanged(); }
         }
 
+        // --- TRI ---
+        private string _sortColumn = "NomProduit";
+        public string SortColumn
+        {
+            get => _sortColumn;
+            set { _sortColumn = value; OnPropertyChanged(); ApplyFilter(); }
+        }
+
+        private bool _sortAscending = true;
+        public bool SortAscending
+        {
+            get => _sortAscending;
+            set { _sortAscending = value; OnPropertyChanged(); ApplyFilter(); }
+        }
+
+        // --- STATS MOUVEMENTS 30J ---
+        private int _totalEntrees30j;
+        public int TotalEntrees30j { get => _totalEntrees30j; set { _totalEntrees30j = value; OnPropertyChanged(); } }
+
+        private int _totalSorties30j;
+        public int TotalSorties30j { get => _totalSorties30j; set { _totalSorties30j = value; OnPropertyChanged(); } }
+
+        private int _qteTotaleEntrees;
+        public int QteTotaleEntrees { get => _qteTotaleEntrees; set { _qteTotaleEntrees = value; OnPropertyChanged(); } }
+
+        private int _qteTotaleSorties;
+        public int QteTotaleSorties { get => _qteTotaleSorties; set { _qteTotaleSorties = value; OnPropertyChanged(); } }
+
+        private string _produitPlusMouvemente = "—";
+        public string ProduitPlusMouvemente { get => _produitPlusMouvemente; set { _produitPlusMouvemente = value; OnPropertyChanged(); } }
+
         // --- COMMANDES ---
         public ICommand OpenAddStockCommand { get; }
         public ICommand OpenRemoveStockCommand { get; }
@@ -204,6 +246,9 @@ namespace GroupyV.ViewModels
         public ICommand RefreshCommand { get; }
         public ICommand ExportCsvCommand { get; }
         public ICommand ImportCsvCommand { get; }
+        public ICommand SortCommand { get; }
+        public ICommand ClearSearchCommand { get; }
+        public ICommand SetFilterCommand { get; }
 
         public StockViewModel()
         {
@@ -214,6 +259,9 @@ namespace GroupyV.ViewModels
             RefreshCommand = new RelayCommand(_ => LoadData());
             ExportCsvCommand = new RelayCommand(_ => ExportCsv());
             ImportCsvCommand = new RelayCommand(_ => ImportCsv());
+            SortCommand = new RelayCommand(ExecuteSort);
+            ClearSearchCommand = new RelayCommand(_ => SearchText = string.Empty);
+            SetFilterCommand = new RelayCommand(param => { if (param is string f) SelectedFilter = f; });
 
             LoadData();
         }
@@ -260,6 +308,11 @@ namespace GroupyV.ViewModels
                 TotalUnites = stocks.Sum(s => s.StockPhysique);
                 AlertesCount = stocks.Count(s => s.IsAlerte);
 
+                // Compteurs filtres
+                CountTous     = stocks.Count;
+                CountAlertes  = stocks.Count(s => s.IsAlerte);
+                CountOk       = stocks.Count(s => !s.IsAlerte);
+
                 // Mouvements récents (30 derniers jours)
                 var depuis = DateTime.Now.AddDays(-30);
                 var mouvements = db.MouvementsStock
@@ -283,6 +336,17 @@ namespace GroupyV.ViewModels
 
                 MouvementsList = new ObservableCollection<MouvementDisplay>(mouvements);
                 MouvementsJour = mouvements.Count(m => m.Date.Date == DateTime.Today);
+
+                // Stats 30j
+                TotalEntrees30j  = mouvements.Count(m => m.IsEntree);
+                TotalSorties30j  = mouvements.Count(m => !m.IsEntree);
+                QteTotaleEntrees = mouvements.Where(m => m.IsEntree).Sum(m => m.Quantite);
+                QteTotaleSorties = mouvements.Where(m => !m.IsEntree).Sum(m => m.Quantite);
+                ProduitPlusMouvemente = mouvements
+                    .GroupBy(m => m.Produit)
+                    .OrderByDescending(g => g.Count())
+                    .Select(g => g.Key)
+                    .FirstOrDefault() ?? "—";
             }
             catch (Exception ex)
             {
@@ -310,11 +374,43 @@ namespace GroupyV.ViewModels
             filtered = SelectedFilter switch
             {
                 "En alerte" => filtered.Where(s => s.IsAlerte),
-                "Stock OK" => filtered.Where(s => !s.IsAlerte),
-                _ => filtered
+                "Stock OK"  => filtered.Where(s => !s.IsAlerte),
+                _           => filtered
+            };
+
+            // Tri
+            filtered = (SortColumn, SortAscending) switch
+            {
+                ("NomProduit",    true)  => filtered.OrderBy(s => s.NomProduit),
+                ("NomProduit",    false) => filtered.OrderByDescending(s => s.NomProduit),
+                ("StockPhysique", true)  => filtered.OrderBy(s => s.StockPhysique),
+                ("StockPhysique", false) => filtered.OrderByDescending(s => s.StockPhysique),
+                ("StockReserve",  true)  => filtered.OrderBy(s => s.StockReserve),
+                ("StockReserve",  false) => filtered.OrderByDescending(s => s.StockReserve),
+                ("StockDisponible", true)  => filtered.OrderBy(s => s.StockDisponible),
+                ("StockDisponible", false) => filtered.OrderByDescending(s => s.StockDisponible),
+                ("SeuilAlerte",   true)  => filtered.OrderBy(s => s.SeuilAlerte),
+                ("SeuilAlerte",   false) => filtered.OrderByDescending(s => s.SeuilAlerte),
+                ("PrixAchat",     true)  => filtered.OrderBy(s => s.PrixAchat),
+                ("PrixAchat",     false) => filtered.OrderByDescending(s => s.PrixAchat),
+                ("IsAlerte",      true)  => filtered.OrderByDescending(s => s.IsAlerte),
+                ("IsAlerte",      false) => filtered.OrderBy(s => s.IsAlerte),
+                _ => filtered.OrderBy(s => s.NomProduit)
             };
 
             StocksList = new ObservableCollection<StockItemDisplay>(filtered);
+        }
+
+        private void ExecuteSort(object param)
+        {
+            if (param is not string column) return;
+            if (SortColumn == column)
+                SortAscending = !SortAscending;
+            else
+            {
+                SortColumn = column;
+                SortAscending = true;
+            }
         }
 
         private void OpenAddStock(object param)
@@ -446,51 +542,119 @@ namespace GroupyV.ViewModels
                 var vendeurId = UserSession.Instance.CurrentUser?.IdUser;
                 if (vendeurId == null)
                 {
-                    MessageBox.Show("Aucun utilisateur connecté.", "Export CSV", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    MessageBox.Show("Aucun utilisateur connecté.", "Export", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
 
+                var now = DateTime.Now;
                 var dialog = new SaveFileDialog
                 {
-                    Title = "Exporter les stocks en CSV",
-                    Filter = "CSV (*.csv)|*.csv",
-                    FileName = $"stocks_{DateTime.Now:yyyyMMdd_HHmmss}.csv"
+                    Title    = "Exporter l'inventaire",
+                    Filter   = "Fichier CSV (*.csv)|*.csv",
+                    FileName = $"inventaire_GroupyV_{now:yyyy-MM-dd}.csv"
                 };
-
                 if (dialog.ShowDialog() != true) return;
 
                 using var db = new GroupyContext();
-                var rows = (from s in db.Stocks
-                            join p in db.Produits on s.IdProduit equals p.IdProduit
+                var data = (from p in db.Produits.Include(p => p.Categorie)
+                            join s in db.Stocks on p.IdProduit equals s.IdProduit into sg
+                            from s in sg.DefaultIfEmpty()
                             where p.IdVendeur == vendeurId
-                            select s)
+                            select new { Produit = p, Stock = s })
                            .AsNoTracking()
-                           .OrderBy(s => s.IdStock)
+                           .ToList()
+                           .OrderBy(x => x.Produit.Categorie?.Lib ?? "")
+                           .ThenBy(x => x.Produit.NomProduit ?? "")
                            .ToList();
 
-                var sb = new StringBuilder();
-                sb.AppendLine(string.Join(';', CsvHeaders));
+                var nomVendeur   = UserSession.Instance.GetNomComplet();
+                int totalUnites  = data.Sum(x => x.Stock?.StockPhysique ?? 0);
+                int totalAlertes = data.Count(x => (x.Stock?.StockPhysique ?? 0) <= (x.Stock?.SeuilAlerte ?? 0));
+                decimal valeur   = data.Sum(x => (x.Stock?.PrixAchat ?? 0) * (x.Stock?.StockPhysique ?? 0));
 
-                foreach (var s in rows)
+                // Culture française : virgule décimale, espace milliers
+                var frFR = CultureInfo.GetCultureInfo("fr-FR");
+
+                var sb = new StringBuilder();
+
+                // Indicateur de séparateur pour Excel
+                sb.AppendLine("sep=;");
+                sb.AppendLine();
+
+                // ── Bloc d'en-tête (ASCII pur — compatible Windows-1252) ─────────
+                sb.AppendLine("# +==================================================+");
+                sb.AppendLine("# |         GROUPYV - EXPORT INVENTAIRE               |");
+                sb.AppendLine("# +==================================================+");
+                sb.AppendLine($"# Vendeur           : {nomVendeur}");
+                sb.AppendLine($"# Date d'export     : {now:dd/MM/yyyy} a {now:HH:mm}");
+                sb.AppendLine($"# Produits exportes : {data.Count}");
+                sb.AppendLine($"# Produits en alerte: {totalAlertes}");
+                sb.AppendLine("#");
+                sb.AppendLine("# /!\\ Colonnes modifiables a l'import :");
+                sb.AppendLine("#     Stock Physique ; Stock Reserve ; Seuil Alerte ; Prix Achat (EUR) ; Emplacement");
+                sb.AppendLine("# --------------------------------------------------");
+                sb.AppendLine();
+
+                // ── En-têtes de colonnes ────────────────────────────────────────
+                sb.AppendLine("Produit;Categorie;Stock Physique;Stock Reserve;Disponible;Seuil Alerte;Prix Achat (EUR);Emplacement;Statut");
+
+                // ── Données ─────────────────────────────────────────────────────
+                foreach (var x in data)
                 {
+                    int    physique = x.Stock?.StockPhysique ?? 0;
+                    int    reserve  = x.Stock?.StockReserve  ?? 0;
+                    int    dispo    = physique - reserve;
+                    int    seuil    = x.Stock?.SeuilAlerte   ?? 0;
+                    bool   alerte   = physique <= seuil;
+                    string statut   = physique == 0 ? "RUPTURE" : alerte ? "ALERTE" : "OK";
+                    // "0.00" avec fr-FR = virgule décimale, sans séparateur de milliers
+                    string prix     = x.Stock?.PrixAchat?.ToString("0.00", frFR) ?? "";
+
                     sb.AppendLine(string.Join(';', new[]
                     {
-                        s.IdStock.ToString(),
-                        s.IdProduit.ToString(),
-                        s.StockPhysique.ToString(),
-                        s.StockReserve.ToString(),
-                        s.SeuilAlerte.ToString(),
-                        s.PrixAchat?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
-                        EscapeCsvField(s.Emplacement)
+                        EscapeCsvField(x.Produit.NomProduit      ?? ""),
+                        EscapeCsvField(x.Produit.Categorie?.Lib  ?? ""),
+                        physique.ToString(),
+                        reserve.ToString(),
+                        dispo.ToString(),
+                        seuil.ToString(),
+                        prix,
+                        EscapeCsvField(x.Stock?.Emplacement ?? ""),
+                        statut
                     }));
                 }
 
-                File.WriteAllText(dialog.FileName, sb.ToString(), Encoding.UTF8);
-                MessageBox.Show("Export CSV terminé.", "Export CSV", MessageBoxButton.OK, MessageBoxImage.Information);
+                // ── Résumé ──────────────────────────────────────────────────────
+                sb.AppendLine();
+                sb.AppendLine("# +==================================================+");
+                sb.AppendLine("# |                    RESUME                         |");
+                sb.AppendLine("# +==================================================+");
+                sb.AppendLine($"# Total unites en stock  : {totalUnites}");
+                sb.AppendLine($"# Produits en alerte     : {totalAlertes}");
+                sb.AppendLine($"# Valeur totale estimee  : {valeur.ToString("0.00", frFR)} EUR");
+                sb.AppendLine("# --------------------------------------------------");
+
+
+                // Windows-1252 = encodage natif d'Excel francais
+                var encoding = Encoding.GetEncoding(1252);
+                File.WriteAllText(dialog.FileName, sb.ToString(), encoding);
+
+                var result = MessageBox.Show(
+                    $"Export réussi ✓\n\n" +
+                    $"  • {data.Count} produit(s) exporté(s)\n" +
+                    $"  • {totalUnites} unités au total\n" +
+                    $"  • {totalAlertes} produit(s) en alerte\n" +
+                    $"  • Valeur estimée : {valeur:N2} €\n\n" +
+                    $"Ouvrir le fichier maintenant ?",
+                    "Export terminé", MessageBoxButton.YesNo, MessageBoxImage.Information);
+
+                if (result == MessageBoxResult.Yes)
+                    System.Diagnostics.Process.Start(
+                        new System.Diagnostics.ProcessStartInfo(dialog.FileName) { UseShellExecute = true });
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Erreur export CSV : {ex.Message}", "Export CSV", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"Erreur lors de l'export : {ex.Message}", "Erreur export", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -501,130 +665,248 @@ namespace GroupyV.ViewModels
                 var vendeurId = UserSession.Instance.CurrentUser?.IdUser;
                 if (vendeurId == null)
                 {
-                    MessageBox.Show("Aucun utilisateur connecté.", "Import CSV", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    MessageBox.Show("Aucun utilisateur connecté.", "Import", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
 
                 var dialog = new OpenFileDialog
                 {
-                    Title = "Importer un CSV de stocks",
-                    Filter = "CSV (*.csv)|*.csv"
+                    Title  = "Importer un inventaire CSV",
+                    Filter = "Fichier CSV (*.csv)|*.csv"
                 };
-
                 if (dialog.ShowDialog() != true) return;
 
-                var lines = File.ReadAllLines(dialog.FileName);
-                if (lines.Length == 0)
+                // ── Lecture & nettoyage ──────────────────────────────────────────
+                var allLines = File.ReadAllLines(dialog.FileName, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+                if (allLines.Length == 0)
                 {
-                    MessageBox.Show("Le fichier CSV est vide.", "Import CSV", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    MessageBox.Show("Le fichier est vide.", "Import", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
 
-                char delimiter = lines[0].Contains(';') ? ';' : ',';
-                var header = ParseCsvLine(lines[0], delimiter).Select(h => h.Trim().ToLowerInvariant()).ToArray();
+                // Détecter le délimiteur (premier ligne non-commentaire)
+                char delim = ';';
+                foreach (var l in allLines)
+                {
+                    var trimmed = l.Trim();
+                    if (trimmed.StartsWith("#") || trimmed.StartsWith("sep=") || string.IsNullOrWhiteSpace(trimmed)) continue;
+                    delim = trimmed.Contains(';') ? ';' : ',';
+                    break;
+                }
 
-                if (header.Length != CsvHeaders.Length || !header.SequenceEqual(CsvHeaders))
+                // Filtrer : ignorer lignes vides, commentaires et directive sep=
+                var dataLines = allLines
+                    .Where(l => !string.IsNullOrWhiteSpace(l)
+                             && !l.TrimStart().StartsWith("#")
+                             && !l.TrimStart().StartsWith("sep="))
+                    .ToList();
+
+                if (dataLines.Count == 0)
+                {
+                    MessageBox.Show("Aucune donnée trouvée dans le fichier.", "Import", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                // ── Détection du format ──────────────────────────────────────────
+                var headerCols = ParseCsvLine(dataLines[0], delim)
+                    .Select(h => h.Trim().ToLowerInvariant())
+                    .ToArray();
+
+                bool isNewFormat  = headerCols.Length >= 1 && headerCols[0] == "produit";
+                bool isOldFormat  = headerCols.Length >= 1 && headerCols[0] == "id_stock";
+
+                if (!isNewFormat && !isOldFormat)
                 {
                     MessageBox.Show(
-                        $"Colonnes CSV incompatibles.\n\nAttendu : {string.Join(";", CsvHeaders)}",
-                        "Import CSV",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Warning);
+                        "Format de fichier non reconnu.\n\n" +
+                        "Le fichier doit avoir été exporté depuis GroupyV.\n" +
+                        "La première colonne doit être « Produit » (format actuel)\n" +
+                        "ou « id_stock » (ancien format).",
+                        "Format invalide", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
 
                 using var db = new GroupyContext();
-                var productIdsVendeur = db.Produits
-                    .Where(p => p.IdVendeur == vendeurId)
-                    .Select(p => p.IdProduit)
-                    .ToHashSet();
 
-                int imported = 0;
-
-                for (int i = 1; i < lines.Length; i++)
+                // ── Import nouveau format (par nom de produit) ───────────────────
+                if (isNewFormat)
                 {
-                    if (string.IsNullOrWhiteSpace(lines[i])) continue;
+                    // Charger tous les produits du vendeur (id + nom)
+                    var produits = db.Produits
+                        .Where(p => p.IdVendeur == vendeurId)
+                        .Select(p => new { p.IdProduit, Nom = p.NomProduit ?? "" })
+                        .ToList();
 
-                    var cols = ParseCsvLine(lines[i], delimiter);
-                    if (cols.Count != CsvHeaders.Length)
-                    {
-                        MessageBox.Show($"Ligne {i + 1} invalide : nombre de colonnes incorrect.", "Import CSV", MessageBoxButton.OK, MessageBoxImage.Warning);
-                        return;
-                    }
+                    // Charger les stocks existants
+                    var stocks = db.Stocks
+                        .Where(s => produits.Select(p => p.IdProduit).Contains(s.IdProduit))
+                        .ToList();
 
-                    if (!int.TryParse(cols[0], out int idStock)
-                        || !int.TryParse(cols[1], out int idProduit)
-                        || !int.TryParse(cols[2], out int stockPhysique)
-                        || !int.TryParse(cols[3], out int stockReserve)
-                        || !int.TryParse(cols[4], out int seuilAlerte))
-                    {
-                        MessageBox.Show($"Ligne {i + 1} invalide : types de données incorrects.", "Import CSV", MessageBoxButton.OK, MessageBoxImage.Warning);
-                        return;
-                    }
+                    int updated  = 0;
+                    int created  = 0;
+                    int skipped  = 0;
+                    var warnings = new List<string>();
 
-                    decimal? prixAchat = null;
-                    if (!string.IsNullOrWhiteSpace(cols[5]))
+                    for (int i = 1; i < dataLines.Count; i++)
                     {
-                        if (!decimal.TryParse(cols[5], NumberStyles.Number, CultureInfo.InvariantCulture, out var prix))
+                        var cols = ParseCsvLine(dataLines[i], delim);
+                        if (cols.Count < 8) { skipped++; continue; }
+
+                        string nomProduit = cols[0].Trim();
+                        if (string.IsNullOrWhiteSpace(nomProduit)) { skipped++; continue; }
+
+                        // Recherche du produit (insensible à la casse)
+                        var produit = produits.FirstOrDefault(p =>
+                            string.Equals(p.Nom, nomProduit, StringComparison.OrdinalIgnoreCase));
+
+                        if (produit == null)
                         {
-                            MessageBox.Show($"Ligne {i + 1} invalide : prix_achat incorrect.", "Import CSV", MessageBoxButton.OK, MessageBoxImage.Warning);
-                            return;
-                        }
-                        prixAchat = prix;
-                    }
-
-                    var emplacement = string.IsNullOrWhiteSpace(cols[6]) ? null : cols[6].Trim();
-
-                    if (!productIdsVendeur.Contains(idProduit))
-                    {
-                        MessageBox.Show($"Ligne {i + 1} invalide : id_produit {idProduit} n'appartient pas à votre compte.", "Import CSV", MessageBoxButton.OK, MessageBoxImage.Warning);
-                        return;
-                    }
-
-                    var stock = db.Stocks.FirstOrDefault(s => s.IdStock == idStock);
-                    if (stock == null)
-                    {
-                        stock = db.Stocks.FirstOrDefault(s => s.IdProduit == idProduit);
-                    }
-
-                    if (stock == null)
-                    {
-                        stock = new Stock
-                        {
-                            IdProduit = idProduit,
-                            StockPhysique = stockPhysique,
-                            StockReserve = stockReserve,
-                            SeuilAlerte = seuilAlerte,
-                            PrixAchat = prixAchat,
-                            Emplacement = emplacement
-                        };
-                        db.Stocks.Add(stock);
-                    }
-                    else
-                    {
-                        if (stock.IdProduit != idProduit)
-                        {
-                            MessageBox.Show($"Ligne {i + 1} invalide : id_stock {idStock} ne correspond pas à id_produit {idProduit}.", "Import CSV", MessageBoxButton.OK, MessageBoxImage.Warning);
-                            return;
+                            warnings.Add($"  • Ligne {i + 1} — « {nomProduit} » : produit introuvable (ignoré)");
+                            skipped++;
+                            continue;
                         }
 
-                        stock.StockPhysique = stockPhysique;
-                        stock.StockReserve = stockReserve;
-                        stock.SeuilAlerte = seuilAlerte;
-                        stock.PrixAchat = prixAchat;
-                        stock.Emplacement = emplacement;
+                        // Parsing des colonnes modifiables
+                        // Cols : 0=Produit 1=Catégorie 2=StockPhysique 3=StockRéservé
+                        //        4=Disponible(ignoré) 5=SeuilAlerte 6=PrixAchat 7=Emplacement 8=Statut(ignoré)
+                        if (!int.TryParse(cols[2].Trim(), out int physique)
+                         || !int.TryParse(cols[3].Trim(), out int reserve)
+                         || !int.TryParse(cols[5].Trim(), out int seuil))
+                        {
+                            warnings.Add($"  • Ligne {i + 1} — « {nomProduit} » : valeurs numériques invalides (ignoré)");
+                            skipped++;
+                            continue;
+                        }
+
+                        decimal? prix = null;
+                        if (!string.IsNullOrWhiteSpace(cols[6]))
+                        {
+                            var prixStr = cols[6].Trim();
+                            // Accepte virgule (fr) ET point (en) comme séparateur décimal
+                            if (decimal.TryParse(prixStr, NumberStyles.Number, CultureInfo.GetCultureInfo("fr-FR"), out var p)
+                             || decimal.TryParse(prixStr, NumberStyles.Number, CultureInfo.InvariantCulture, out p))
+                                prix = p;
+                        }
+
+                        string emplacement = cols.Count > 7 && !string.IsNullOrWhiteSpace(cols[7])
+                            ? cols[7].Trim() : null;
+
+                        var stock = stocks.FirstOrDefault(s => s.IdProduit == produit.IdProduit);
+                        if (stock == null)
+                        {
+                            stock = new Stock
+                            {
+                                IdProduit     = produit.IdProduit,
+                                StockPhysique = physique,
+                                StockReserve  = reserve,
+                                SeuilAlerte   = seuil,
+                                PrixAchat     = prix,
+                                Emplacement   = emplacement
+                            };
+                            db.Stocks.Add(stock);
+                            created++;
+                        }
+                        else
+                        {
+                            stock.StockPhysique = physique;
+                            stock.StockReserve  = reserve;
+                            stock.SeuilAlerte   = seuil;
+                            stock.PrixAchat     = prix;
+                            stock.Emplacement   = emplacement;
+                            updated++;
+                        }
                     }
 
-                    imported++;
+                    db.SaveChanges();
+                    LoadData();
+
+                    var msg = new StringBuilder();
+                    msg.AppendLine("Import terminé ✓\n");
+                    msg.AppendLine($"  • {updated} produit(s) mis à jour");
+                    msg.AppendLine($"  • {created} stock(s) créé(s)");
+                    if (skipped > 0) msg.AppendLine($"  • {skipped} ligne(s) ignorée(s)");
+                    if (warnings.Count > 0)
+                    {
+                        msg.AppendLine("\nAvertissements :");
+                        foreach (var w in warnings) msg.AppendLine(w);
+                    }
+
+                    MessageBox.Show(msg.ToString(), "Import terminé",
+                        MessageBoxButton.OK,
+                        warnings.Count > 0 ? MessageBoxImage.Warning : MessageBoxImage.Information);
+                    return;
                 }
 
-                db.SaveChanges();
-                MessageBox.Show($"Import CSV terminé. {imported} ligne(s) traitée(s).", "Import CSV", MessageBoxButton.OK, MessageBoxImage.Information);
-                LoadData();
+                // ── Import ancien format (rétrocompatibilité par id) ─────────────
+                if (isOldFormat)
+                {
+                    var productIdsVendeur = db.Produits
+                        .Where(p => p.IdVendeur == vendeurId)
+                        .Select(p => p.IdProduit)
+                        .ToHashSet();
+
+                    int imported = 0;
+                    for (int i = 1; i < dataLines.Count; i++)
+                    {
+                        var cols = ParseCsvLine(dataLines[i], delim);
+                        if (cols.Count < 7) continue;
+
+                        if (!int.TryParse(cols[0], out int idStock)
+                         || !int.TryParse(cols[1], out int idProduit)
+                         || !int.TryParse(cols[2], out int stockPhysique)
+                         || !int.TryParse(cols[3], out int stockReserve)
+                         || !int.TryParse(cols[4], out int seuilAlerte))
+                            continue;
+
+                        if (!productIdsVendeur.Contains(idProduit)) continue;
+
+                        decimal? prixAchat = null;
+                        if (!string.IsNullOrWhiteSpace(cols[5]))
+                        {
+                            var paStr = cols[5].Trim();
+                            if (decimal.TryParse(paStr, NumberStyles.Number, CultureInfo.GetCultureInfo("fr-FR"), out var pa)
+                             || decimal.TryParse(paStr, NumberStyles.Number, CultureInfo.InvariantCulture, out pa))
+                                prixAchat = pa;
+                        }
+
+                        string emplacement = string.IsNullOrWhiteSpace(cols[6]) ? null : cols[6].Trim();
+
+                        var stock = db.Stocks.FirstOrDefault(s => s.IdStock == idStock)
+                                 ?? db.Stocks.FirstOrDefault(s => s.IdProduit == idProduit);
+
+                        if (stock == null)
+                        {
+                            db.Stocks.Add(new Stock
+                            {
+                                IdProduit     = idProduit,
+                                StockPhysique = stockPhysique,
+                                StockReserve  = stockReserve,
+                                SeuilAlerte   = seuilAlerte,
+                                PrixAchat     = prixAchat,
+                                Emplacement   = emplacement
+                            });
+                        }
+                        else
+                        {
+                            stock.StockPhysique = stockPhysique;
+                            stock.StockReserve  = stockReserve;
+                            stock.SeuilAlerte   = seuilAlerte;
+                            stock.PrixAchat     = prixAchat;
+                            stock.Emplacement   = emplacement;
+                        }
+                        imported++;
+                    }
+
+                    db.SaveChanges();
+                    LoadData();
+                    MessageBox.Show(
+                        $"Import (ancien format) terminé ✓\n\n  • {imported} ligne(s) traitée(s)",
+                        "Import terminé", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Erreur import CSV : {ex.Message}", "Import CSV", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"Erreur lors de l'import : {ex.Message}", "Erreur import", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 

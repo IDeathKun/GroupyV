@@ -260,19 +260,19 @@
                     <StackPanel Grid.Column="1" Orientation="Horizontal">
                         <Button Command="{Binding ImportCsvCommand}" Style="{StaticResource MaterialDesignOutlinedButton}"
                                 BorderBrush="{DynamicResource InputBorderColor}" Foreground="{DynamicResource TextSecondaryColor}" Height="36" Margin="0,0,8,0"
-                                materialDesign:ButtonAssist.CornerRadius="10" Padding="14,0">
+                                materialDesign:ButtonAssist.CornerRadius="10" Padding="14,0" ToolTip="Importer un fichier CSV exporté depuis GroupyV">
                             <StackPanel Orientation="Horizontal">
                                 <materialDesign:PackIcon Kind="FileImportOutline" Width="16" Height="16" Margin="0,0,6,0"/>
-                                <TextBlock Text="Importer CSV" FontSize="11"/>
+                                <TextBlock Text="Importer" FontSize="11"/>
                             </StackPanel>
                         </Button>
 
                         <Button Command="{Binding ExportCsvCommand}" Style="{StaticResource MaterialDesignOutlinedButton}"
                                 BorderBrush="{DynamicResource InputBorderColor}" Foreground="{DynamicResource TextSecondaryColor}" Height="36" Margin="0,0,8,0"
-                                materialDesign:ButtonAssist.CornerRadius="10" Padding="14,0">
+                                materialDesign:ButtonAssist.CornerRadius="10" Padding="14,0" ToolTip="Exporter l'inventaire complet en CSV (compatible Excel)">
                             <StackPanel Orientation="Horizontal">
                                 <materialDesign:PackIcon Kind="FileExportOutline" Width="16" Height="16" Margin="0,0,6,0"/>
-                                <TextBlock Text="Exporter CSV" FontSize="11"/>
+                                <TextBlock Text="Exporter" FontSize="11"/>
                             </StackPanel>
                         </Button>
 
@@ -351,45 +351,204 @@
                     </Border>
                 </Grid>
 
-                <!-- 3. BARRE DE RECHERCHE -->
+                <!-- 3. BARRE DE RECHERCHE + FILTRES -->
                 <Grid Grid.Row="2" Margin="0,0,0,18">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="14"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
-                    <Border Background="{DynamicResource CardBgColor}" CornerRadius="12" Padding="14,0" BorderBrush="{DynamicResource BorderSubtleColor}" BorderThickness="1">
+                    <!-- Barre de recherche avec bouton effacer et compteur -->
+                    <Border Background="{DynamicResource CardBgColor}" CornerRadius="12" Padding="14,0"
+                            BorderThickness="1.5">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleColor}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasSearchText}" Value="True">
+                                        <Setter Property="BorderBrush" Value="#6C5DD3"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <materialDesign:PackIcon Kind="Magnify" Foreground="{DynamicResource TextSecondaryColor}" Width="18" Height="18" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                            <TextBox Grid.Column="1" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                                     materialDesign:HintAssist.Hint="Rechercher un produit..." materialDesign:HintAssist.Foreground="{DynamicResource TextSecondaryColor}"
+
+                            <!-- Icône loupe (change couleur si recherche active) -->
+                            <materialDesign:PackIcon Grid.Column="0" Width="18" Height="18" VerticalAlignment="Center" Margin="0,0,10,0">
+                                <materialDesign:PackIcon.Style>
+                                    <Style TargetType="materialDesign:PackIcon">
+                                        <Setter Property="Kind" Value="Magnify"/>
+                                        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryColor}"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasSearchText}" Value="True">
+                                                <Setter Property="Foreground" Value="#6C5DD3"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </materialDesign:PackIcon.Style>
+                            </materialDesign:PackIcon>
+
+                            <!-- Champ de saisie -->
+                            <TextBox Grid.Column="1"
+                                     Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                     materialDesign:HintAssist.Hint="Rechercher par nom, catégorie, emplacement…"
+                                     materialDesign:HintAssist.Foreground="{DynamicResource TextSecondaryColor}"
                                      materialDesign:TextFieldAssist.DecorationVisibility="Hidden"
-                                     BorderThickness="0" Background="Transparent" Foreground="{DynamicResource TextPrimaryColor}" Height="40" VerticalContentAlignment="Center" FontSize="13"/>
+                                     BorderThickness="0" Background="Transparent"
+                                     Foreground="{DynamicResource TextPrimaryColor}"
+                                     Height="42" VerticalContentAlignment="Center" FontSize="13"/>
+
+                            <!-- Compteur de résultats (visible uniquement si recherche active) -->
+                            <Border Grid.Column="2" CornerRadius="8" Padding="8,3" Margin="6,0"
+                                    VerticalAlignment="Center"
+                                    Visibility="{Binding HasSearchText, Converter={StaticResource BoolToVis}}">
+                                <Border.Background>
+                                    <SolidColorBrush Color="#6C5DD3" Opacity="0.15"/>
+                                </Border.Background>
+                                <TextBlock Text="{Binding StocksList.Count, StringFormat='{}{0} résultat(s)'}"
+                                           Foreground="#6C5DD3" FontSize="10" FontWeight="Bold"/>
+                            </Border>
+
+                            <!-- Bouton effacer (visible uniquement si recherche active) -->
+                            <Button Grid.Column="3"
+                                    Command="{Binding ClearSearchCommand}"
+                                    Style="{StaticResource MaterialDesignIconForegroundButton}"
+                                    Width="32" Height="32" Padding="0" Margin="0,0,4,0"
+                                    VerticalAlignment="Center" ToolTip="Effacer la recherche"
+                                    Visibility="{Binding HasSearchText, Converter={StaticResource BoolToVis}}">
+                                <materialDesign:PackIcon Kind="CloseCircle" Width="16" Height="16" Foreground="{DynamicResource TextSecondaryColor}"/>
+                            </Button>
                         </Grid>
                     </Border>
 
-                    <ItemsControl Grid.Column="2" ItemsSource="{Binding Filters}">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <StackPanel Orientation="Horizontal"/>
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <RadioButton Content="{Binding}" GroupName="StockFilter" Margin="4,0"
-                                             Command="{Binding DataContext.RefreshCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                             IsChecked="{Binding DataContext.SelectedFilter, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={x:Null}}"
-                                             Height="40" Padding="16,0" Foreground="{DynamicResource TextSecondaryColor}" Background="Transparent"
-                                             Style="{StaticResource MaterialDesignOutlinedButton}"
-                                             BorderBrush="{DynamicResource InputBorderColor}" materialDesign:ButtonAssist.CornerRadius="10" FontSize="11" Click="FilterButton_Click"/>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                    <!-- Filtres pill avec compteurs et état actif -->
+                    <StackPanel Grid.Column="2" Orientation="Horizontal">
+
+                        <!-- Tous -->
+                        <Button Command="{Binding SetFilterCommand}" CommandParameter="Tous"
+                                Height="42" Margin="0,0,6,0" Padding="14,0"
+                                materialDesign:ButtonAssist.CornerRadius="12">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignOutlinedButton}">
+                                    <Setter Property="BorderBrush" Value="{DynamicResource InputBorderColor}"/>
+                                    <Setter Property="Foreground" Value="{DynamicResource TextSecondaryColor}"/>
+                                    <Setter Property="Background" Value="Transparent"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding SelectedFilter}" Value="Tous">
+                                            <Setter Property="BorderBrush" Value="#6C5DD3"/>
+                                            <Setter Property="Foreground" Value="#6C5DD3"/>
+                                            <Setter Property="Background">
+                                                <Setter.Value><SolidColorBrush Color="#6C5DD3" Opacity="0.1"/></Setter.Value>
+                                            </Setter>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="FormatListBulleted" Width="14" Height="14" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                <TextBlock Text="Tous" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                <Border CornerRadius="8" Padding="6,1" Margin="6,0,0,0" VerticalAlignment="Center">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Background"><Setter.Value><SolidColorBrush Color="#6C5DD3" Opacity="0.15"/></Setter.Value></Setter>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding SelectedFilter}" Value="Tous">
+                                                    <Setter Property="Background"><Setter.Value><SolidColorBrush Color="#6C5DD3" Opacity="0.25"/></Setter.Value></Setter>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <TextBlock Text="{Binding CountTous}" FontSize="10" FontWeight="Bold" Foreground="#6C5DD3"/>
+                                </Border>
+                            </StackPanel>
+                        </Button>
+
+                        <!-- En alerte -->
+                        <Button Command="{Binding SetFilterCommand}" CommandParameter="En alerte"
+                                Height="42" Margin="0,0,6,0" Padding="14,0"
+                                materialDesign:ButtonAssist.CornerRadius="12">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignOutlinedButton}">
+                                    <Setter Property="BorderBrush" Value="{DynamicResource InputBorderColor}"/>
+                                    <Setter Property="Foreground" Value="{DynamicResource TextSecondaryColor}"/>
+                                    <Setter Property="Background" Value="Transparent"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding SelectedFilter}" Value="En alerte">
+                                            <Setter Property="BorderBrush" Value="#FF5B5B"/>
+                                            <Setter Property="Foreground" Value="#FF5B5B"/>
+                                            <Setter Property="Background">
+                                                <Setter.Value><SolidColorBrush Color="#FF5B5B" Opacity="0.1"/></Setter.Value>
+                                            </Setter>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="AlertCircleOutline" Width="14" Height="14" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                <TextBlock Text="En alerte" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                <Border CornerRadius="8" Padding="6,1" Margin="6,0,0,0" VerticalAlignment="Center">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Background"><Setter.Value><SolidColorBrush Color="#FF5B5B" Opacity="0.15"/></Setter.Value></Setter>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding SelectedFilter}" Value="En alerte">
+                                                    <Setter Property="Background"><Setter.Value><SolidColorBrush Color="#FF5B5B" Opacity="0.3"/></Setter.Value></Setter>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <TextBlock Text="{Binding CountAlertes}" FontSize="10" FontWeight="Bold" Foreground="#FF5B5B"/>
+                                </Border>
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Stock OK -->
+                        <Button Command="{Binding SetFilterCommand}" CommandParameter="Stock OK"
+                                Height="42" Padding="14,0"
+                                materialDesign:ButtonAssist.CornerRadius="12">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignOutlinedButton}">
+                                    <Setter Property="BorderBrush" Value="{DynamicResource InputBorderColor}"/>
+                                    <Setter Property="Foreground" Value="{DynamicResource TextSecondaryColor}"/>
+                                    <Setter Property="Background" Value="Transparent"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding SelectedFilter}" Value="Stock OK">
+                                            <Setter Property="BorderBrush" Value="#45E3B8"/>
+                                            <Setter Property="Foreground" Value="#45E3B8"/>
+                                            <Setter Property="Background">
+                                                <Setter.Value><SolidColorBrush Color="#45E3B8" Opacity="0.1"/></Setter.Value>
+                                            </Setter>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="CheckCircleOutline" Width="14" Height="14" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                <TextBlock Text="Stock OK" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                <Border CornerRadius="8" Padding="6,1" Margin="6,0,0,0" VerticalAlignment="Center">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Background"><Setter.Value><SolidColorBrush Color="#45E3B8" Opacity="0.15"/></Setter.Value></Setter>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding SelectedFilter}" Value="Stock OK">
+                                                    <Setter Property="Background"><Setter.Value><SolidColorBrush Color="#45E3B8" Opacity="0.3"/></Setter.Value></Setter>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <TextBlock Text="{Binding CountOk}" FontSize="10" FontWeight="Bold" Foreground="#45E3B8"/>
+                                </Border>
+                            </StackPanel>
+                        </Button>
+
+                    </StackPanel>
                 </Grid>
 
                 <!-- 4. TABLEAU DES STOCKS -->
@@ -412,8 +571,8 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- En-tête colonnes -->
-                        <Grid Grid.Row="1" Margin="22,10,22,4">
+                        <!-- En-tête colonnes (cliquables pour tri) -->
+                        <Grid Grid.Row="1" Margin="22,6,22,2">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="2.2*"/>
                                 <ColumnDefinition Width="*"/>
@@ -425,15 +584,248 @@
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="120"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="PRODUIT" Foreground="{DynamicResource TextSecondaryColor}" FontSize="9" FontWeight="Bold"/>
-                            <TextBlock Grid.Column="1" Text="PHYSIQUE" Foreground="{DynamicResource TextSecondaryColor}" FontSize="9" FontWeight="Bold" HorizontalAlignment="Center"/>
-                            <TextBlock Grid.Column="2" Text="RÉSERVÉ" Foreground="{DynamicResource TextSecondaryColor}" FontSize="9" FontWeight="Bold" HorizontalAlignment="Center"/>
-                            <TextBlock Grid.Column="3" Text="DISPONIBLE" Foreground="{DynamicResource TextSecondaryColor}" FontSize="9" FontWeight="Bold" HorizontalAlignment="Center"/>
-                            <TextBlock Grid.Column="4" Text="SEUIL" Foreground="{DynamicResource TextSecondaryColor}" FontSize="9" FontWeight="Bold" HorizontalAlignment="Center"/>
-                            <TextBlock Grid.Column="5" Text="PRIX ACHAT" Foreground="{DynamicResource TextSecondaryColor}" FontSize="9" FontWeight="Bold" HorizontalAlignment="Center"/>
-                            <TextBlock Grid.Column="6" Text="EMPLACEMENT" Foreground="{DynamicResource TextSecondaryColor}" FontSize="9" FontWeight="Bold" HorizontalAlignment="Center"/>
-                            <TextBlock Grid.Column="7" Text="STATUT" Foreground="{DynamicResource TextSecondaryColor}" FontSize="9" FontWeight="Bold" HorizontalAlignment="Center"/>
-                            <TextBlock Grid.Column="8" Text="ACTIONS" Foreground="{DynamicResource TextSecondaryColor}" FontSize="9" FontWeight="Bold" HorizontalAlignment="Center"/>
+
+                            <Button Grid.Column="0" Command="{Binding SortCommand}" CommandParameter="NomProduit"
+                                    Style="{StaticResource MaterialDesignFlatButton}" Padding="0" Height="24" HorizontalAlignment="Left"
+                                    Foreground="{DynamicResource TextSecondaryColor}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="PRODUIT" FontSize="9" FontWeight="Bold"/>
+                                    <materialDesign:PackIcon Width="10" Height="10" Margin="3,0,0,0" VerticalAlignment="Center">
+                                        <materialDesign:PackIcon.Style>
+                                            <Style TargetType="materialDesign:PackIcon">
+                                                <Setter Property="Kind" Value="UnfoldMoreHorizontal"/>
+                                                <Setter Property="Foreground" Value="{DynamicResource TextSecondaryColor}"/>
+                                                <Style.Triggers>
+                                                    <MultiDataTrigger>
+                                                        <MultiDataTrigger.Conditions>
+                                                            <Condition Binding="{Binding SortColumn}" Value="NomProduit"/>
+                                                            <Condition Binding="{Binding SortAscending}" Value="True"/>
+                                                        </MultiDataTrigger.Conditions>
+                                                        <Setter Property="Kind" Value="ArrowUp"/>
+                                                        <Setter Property="Foreground" Value="{DynamicResource AccentColor}"/>
+                                                    </MultiDataTrigger>
+                                                    <MultiDataTrigger>
+                                                        <MultiDataTrigger.Conditions>
+                                                            <Condition Binding="{Binding SortColumn}" Value="NomProduit"/>
+                                                            <Condition Binding="{Binding SortAscending}" Value="False"/>
+                                                        </MultiDataTrigger.Conditions>
+                                                        <Setter Property="Kind" Value="ArrowDown"/>
+                                                        <Setter Property="Foreground" Value="{DynamicResource AccentColor}"/>
+                                                    </MultiDataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </materialDesign:PackIcon.Style>
+                                    </materialDesign:PackIcon>
+                                </StackPanel>
+                            </Button>
+
+                            <Button Grid.Column="1" Command="{Binding SortCommand}" CommandParameter="StockPhysique"
+                                    Style="{StaticResource MaterialDesignFlatButton}" Padding="0" Height="24" HorizontalAlignment="Center"
+                                    Foreground="{DynamicResource TextSecondaryColor}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="PHYSIQUE" FontSize="9" FontWeight="Bold"/>
+                                    <materialDesign:PackIcon Width="10" Height="10" Margin="3,0,0,0" VerticalAlignment="Center">
+                                        <materialDesign:PackIcon.Style>
+                                            <Style TargetType="materialDesign:PackIcon">
+                                                <Setter Property="Kind" Value="UnfoldMoreHorizontal"/>
+                                                <Setter Property="Foreground" Value="{DynamicResource TextSecondaryColor}"/>
+                                                <Style.Triggers>
+                                                    <MultiDataTrigger>
+                                                        <MultiDataTrigger.Conditions>
+                                                            <Condition Binding="{Binding SortColumn}" Value="StockPhysique"/>
+                                                            <Condition Binding="{Binding SortAscending}" Value="True"/>
+                                                        </MultiDataTrigger.Conditions>
+                                                        <Setter Property="Kind" Value="ArrowUp"/>
+                                                        <Setter Property="Foreground" Value="{DynamicResource AccentColor}"/>
+                                                    </MultiDataTrigger>
+                                                    <MultiDataTrigger>
+                                                        <MultiDataTrigger.Conditions>
+                                                            <Condition Binding="{Binding SortColumn}" Value="StockPhysique"/>
+                                                            <Condition Binding="{Binding SortAscending}" Value="False"/>
+                                                        </MultiDataTrigger.Conditions>
+                                                        <Setter Property="Kind" Value="ArrowDown"/>
+                                                        <Setter Property="Foreground" Value="{DynamicResource AccentColor}"/>
+                                                    </MultiDataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </materialDesign:PackIcon.Style>
+                                    </materialDesign:PackIcon>
+                                </StackPanel>
+                            </Button>
+
+                            <Button Grid.Column="2" Command="{Binding SortCommand}" CommandParameter="StockReserve"
+                                    Style="{StaticResource MaterialDesignFlatButton}" Padding="0" Height="24" HorizontalAlignment="Center"
+                                    Foreground="{DynamicResource TextSecondaryColor}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="RÉSERVÉ" FontSize="9" FontWeight="Bold"/>
+                                    <materialDesign:PackIcon Width="10" Height="10" Margin="3,0,0,0" VerticalAlignment="Center">
+                                        <materialDesign:PackIcon.Style>
+                                            <Style TargetType="materialDesign:PackIcon">
+                                                <Setter Property="Kind" Value="UnfoldMoreHorizontal"/>
+                                                <Setter Property="Foreground" Value="{DynamicResource TextSecondaryColor}"/>
+                                                <Style.Triggers>
+                                                    <MultiDataTrigger>
+                                                        <MultiDataTrigger.Conditions>
+                                                            <Condition Binding="{Binding SortColumn}" Value="StockReserve"/>
+                                                            <Condition Binding="{Binding SortAscending}" Value="True"/>
+                                                        </MultiDataTrigger.Conditions>
+                                                        <Setter Property="Kind" Value="ArrowUp"/>
+                                                        <Setter Property="Foreground" Value="{DynamicResource AccentColor}"/>
+                                                    </MultiDataTrigger>
+                                                    <MultiDataTrigger>
+                                                        <MultiDataTrigger.Conditions>
+                                                            <Condition Binding="{Binding SortColumn}" Value="StockReserve"/>
+                                                            <Condition Binding="{Binding SortAscending}" Value="False"/>
+                                                        </MultiDataTrigger.Conditions>
+                                                        <Setter Property="Kind" Value="ArrowDown"/>
+                                                        <Setter Property="Foreground" Value="{DynamicResource AccentColor}"/>
+                                                    </MultiDataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </materialDesign:PackIcon.Style>
+                                    </materialDesign:PackIcon>
+                                </StackPanel>
+                            </Button>
+
+                            <Button Grid.Column="3" Command="{Binding SortCommand}" CommandParameter="StockDisponible"
+                                    Style="{StaticResource MaterialDesignFlatButton}" Padding="0" Height="24" HorizontalAlignment="Center"
+                                    Foreground="{DynamicResource TextSecondaryColor}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="DISPONIBLE" FontSize="9" FontWeight="Bold"/>
+                                    <materialDesign:PackIcon Width="10" Height="10" Margin="3,0,0,0" VerticalAlignment="Center">
+                                        <materialDesign:PackIcon.Style>
+                                            <Style TargetType="materialDesign:PackIcon">
+                                                <Setter Property="Kind" Value="UnfoldMoreHorizontal"/>
+                                                <Setter Property="Foreground" Value="{DynamicResource TextSecondaryColor}"/>
+                                                <Style.Triggers>
+                                                    <MultiDataTrigger>
+                                                        <MultiDataTrigger.Conditions>
+                                                            <Condition Binding="{Binding SortColumn}" Value="StockDisponible"/>
+                                                            <Condition Binding="{Binding SortAscending}" Value="True"/>
+                                                        </MultiDataTrigger.Conditions>
+                                                        <Setter Property="Kind" Value="ArrowUp"/>
+                                                        <Setter Property="Foreground" Value="{DynamicResource AccentColor}"/>
+                                                    </MultiDataTrigger>
+                                                    <MultiDataTrigger>
+                                                        <MultiDataTrigger.Conditions>
+                                                            <Condition Binding="{Binding SortColumn}" Value="StockDisponible"/>
+                                                            <Condition Binding="{Binding SortAscending}" Value="False"/>
+                                                        </MultiDataTrigger.Conditions>
+                                                        <Setter Property="Kind" Value="ArrowDown"/>
+                                                        <Setter Property="Foreground" Value="{DynamicResource AccentColor}"/>
+                                                    </MultiDataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </materialDesign:PackIcon.Style>
+                                    </materialDesign:PackIcon>
+                                </StackPanel>
+                            </Button>
+
+                            <Button Grid.Column="4" Command="{Binding SortCommand}" CommandParameter="SeuilAlerte"
+                                    Style="{StaticResource MaterialDesignFlatButton}" Padding="0" Height="24" HorizontalAlignment="Center"
+                                    Foreground="{DynamicResource TextSecondaryColor}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="SEUIL" FontSize="9" FontWeight="Bold"/>
+                                    <materialDesign:PackIcon Width="10" Height="10" Margin="3,0,0,0" VerticalAlignment="Center">
+                                        <materialDesign:PackIcon.Style>
+                                            <Style TargetType="materialDesign:PackIcon">
+                                                <Setter Property="Kind" Value="UnfoldMoreHorizontal"/>
+                                                <Setter Property="Foreground" Value="{DynamicResource TextSecondaryColor}"/>
+                                                <Style.Triggers>
+                                                    <MultiDataTrigger>
+                                                        <MultiDataTrigger.Conditions>
+                                                            <Condition Binding="{Binding SortColumn}" Value="SeuilAlerte"/>
+                                                            <Condition Binding="{Binding SortAscending}" Value="True"/>
+                                                        </MultiDataTrigger.Conditions>
+                                                        <Setter Property="Kind" Value="ArrowUp"/>
+                                                        <Setter Property="Foreground" Value="{DynamicResource AccentColor}"/>
+                                                    </MultiDataTrigger>
+                                                    <MultiDataTrigger>
+                                                        <MultiDataTrigger.Conditions>
+                                                            <Condition Binding="{Binding SortColumn}" Value="SeuilAlerte"/>
+                                                            <Condition Binding="{Binding SortAscending}" Value="False"/>
+                                                        </MultiDataTrigger.Conditions>
+                                                        <Setter Property="Kind" Value="ArrowDown"/>
+                                                        <Setter Property="Foreground" Value="{DynamicResource AccentColor}"/>
+                                                    </MultiDataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </materialDesign:PackIcon.Style>
+                                    </materialDesign:PackIcon>
+                                </StackPanel>
+                            </Button>
+
+                            <Button Grid.Column="5" Command="{Binding SortCommand}" CommandParameter="PrixAchat"
+                                    Style="{StaticResource MaterialDesignFlatButton}" Padding="0" Height="24" HorizontalAlignment="Center"
+                                    Foreground="{DynamicResource TextSecondaryColor}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="PRIX ACHAT" FontSize="9" FontWeight="Bold"/>
+                                    <materialDesign:PackIcon Width="10" Height="10" Margin="3,0,0,0" VerticalAlignment="Center">
+                                        <materialDesign:PackIcon.Style>
+                                            <Style TargetType="materialDesign:PackIcon">
+                                                <Setter Property="Kind" Value="UnfoldMoreHorizontal"/>
+                                                <Setter Property="Foreground" Value="{DynamicResource TextSecondaryColor}"/>
+                                                <Style.Triggers>
+                                                    <MultiDataTrigger>
+                                                        <MultiDataTrigger.Conditions>
+                                                            <Condition Binding="{Binding SortColumn}" Value="PrixAchat"/>
+                                                            <Condition Binding="{Binding SortAscending}" Value="True"/>
+                                                        </MultiDataTrigger.Conditions>
+                                                        <Setter Property="Kind" Value="ArrowUp"/>
+                                                        <Setter Property="Foreground" Value="{DynamicResource AccentColor}"/>
+                                                    </MultiDataTrigger>
+                                                    <MultiDataTrigger>
+                                                        <MultiDataTrigger.Conditions>
+                                                            <Condition Binding="{Binding SortColumn}" Value="PrixAchat"/>
+                                                            <Condition Binding="{Binding SortAscending}" Value="False"/>
+                                                        </MultiDataTrigger.Conditions>
+                                                        <Setter Property="Kind" Value="ArrowDown"/>
+                                                        <Setter Property="Foreground" Value="{DynamicResource AccentColor}"/>
+                                                    </MultiDataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </materialDesign:PackIcon.Style>
+                                    </materialDesign:PackIcon>
+                                </StackPanel>
+                            </Button>
+
+                            <TextBlock Grid.Column="6" Text="EMPLACEMENT" Foreground="{DynamicResource TextSecondaryColor}" FontSize="9" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+
+                            <Button Grid.Column="7" Command="{Binding SortCommand}" CommandParameter="IsAlerte"
+                                    Style="{StaticResource MaterialDesignFlatButton}" Padding="0" Height="24" HorizontalAlignment="Center"
+                                    Foreground="{DynamicResource TextSecondaryColor}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="STATUT" FontSize="9" FontWeight="Bold"/>
+                                    <materialDesign:PackIcon Width="10" Height="10" Margin="3,0,0,0" VerticalAlignment="Center">
+                                        <materialDesign:PackIcon.Style>
+                                            <Style TargetType="materialDesign:PackIcon">
+                                                <Setter Property="Kind" Value="UnfoldMoreHorizontal"/>
+                                                <Setter Property="Foreground" Value="{DynamicResource TextSecondaryColor}"/>
+                                                <Style.Triggers>
+                                                    <MultiDataTrigger>
+                                                        <MultiDataTrigger.Conditions>
+                                                            <Condition Binding="{Binding SortColumn}" Value="IsAlerte"/>
+                                                            <Condition Binding="{Binding SortAscending}" Value="True"/>
+                                                        </MultiDataTrigger.Conditions>
+                                                        <Setter Property="Kind" Value="ArrowUp"/>
+                                                        <Setter Property="Foreground" Value="{DynamicResource AccentColor}"/>
+                                                    </MultiDataTrigger>
+                                                    <MultiDataTrigger>
+                                                        <MultiDataTrigger.Conditions>
+                                                            <Condition Binding="{Binding SortColumn}" Value="IsAlerte"/>
+                                                            <Condition Binding="{Binding SortAscending}" Value="False"/>
+                                                        </MultiDataTrigger.Conditions>
+                                                        <Setter Property="Kind" Value="ArrowDown"/>
+                                                        <Setter Property="Foreground" Value="{DynamicResource AccentColor}"/>
+                                                    </MultiDataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </materialDesign:PackIcon.Style>
+                                    </materialDesign:PackIcon>
+                                </StackPanel>
+                            </Button>
+
+                            <TextBlock Grid.Column="8" Text="ACTIONS" Foreground="{DynamicResource TextSecondaryColor}" FontSize="9" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Grid>
 
                         <!-- Liste -->
@@ -556,13 +948,49 @@
                         </Grid.RowDefinitions>
 
                         <Border BorderBrush="{DynamicResource BorderSubtleColor}" BorderThickness="0,0,0,1" Padding="22,16">
-                            <StackPanel Orientation="Horizontal">
-                                <materialDesign:PackIcon Kind="History" Width="18" Height="18" Foreground="{DynamicResource AccentColor}" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                                <TextBlock Text="Historique des mouvements" Foreground="{DynamicResource TextPrimaryColor}" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                                <Border Background="{DynamicResource BorderSubtleColor}" CornerRadius="10" Padding="8,2" Margin="10,0,0,0" VerticalAlignment="Center">
-                                    <TextBlock Text="30 derniers jours" Foreground="{DynamicResource TextSecondaryColor}" FontSize="10"/>
-                                </Border>
-                            </StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="History" Width="18" Height="18" Foreground="{DynamicResource AccentColor}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                    <TextBlock Text="Historique des mouvements" Foreground="{DynamicResource TextPrimaryColor}" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                    <Border Background="{DynamicResource BorderSubtleColor}" CornerRadius="10" Padding="8,2" Margin="10,0,0,0" VerticalAlignment="Center">
+                                        <TextBlock Text="30 derniers jours" Foreground="{DynamicResource TextSecondaryColor}" FontSize="10"/>
+                                    </Border>
+                                </StackPanel>
+                                <!-- Statistiques mouvements 30j -->
+                                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                    <Border Background="{DynamicResource CardBgDarkerColor}" CornerRadius="10" Padding="12,6" Margin="6,0">
+                                        <StackPanel Orientation="Horizontal">
+                                            <materialDesign:PackIcon Kind="ArrowDownBold" Width="14" Height="14" Foreground="#45E3B8" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding TotalEntrees30j, StringFormat='{}{0} entrées'}" Foreground="#45E3B8" FontSize="11" FontWeight="Bold"/>
+                                                <TextBlock Text="{Binding QteTotaleEntrees, StringFormat='{}{0} unités'}" Foreground="{DynamicResource TextSecondaryColor}" FontSize="9"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
+                                    <Border Background="{DynamicResource CardBgDarkerColor}" CornerRadius="10" Padding="12,6" Margin="6,0">
+                                        <StackPanel Orientation="Horizontal">
+                                            <materialDesign:PackIcon Kind="ArrowUpBold" Width="14" Height="14" Foreground="#FF9F43" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding TotalSorties30j, StringFormat='{}{0} sorties'}" Foreground="#FF9F43" FontSize="11" FontWeight="Bold"/>
+                                                <TextBlock Text="{Binding QteTotaleSorties, StringFormat='{}{0} unités'}" Foreground="{DynamicResource TextSecondaryColor}" FontSize="9"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
+                                    <Border Background="{DynamicResource CardBgDarkerColor}" CornerRadius="10" Padding="12,6" Margin="6,0,0,0">
+                                        <StackPanel Orientation="Horizontal">
+                                            <materialDesign:PackIcon Kind="TrophyAward" Width="14" Height="14" Foreground="#6C5DD3" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                                            <StackPanel>
+                                                <TextBlock Text="Top produit" Foreground="{DynamicResource TextSecondaryColor}" FontSize="9"/>
+                                                <TextBlock Text="{Binding ProduitPlusMouvemente}" Foreground="{DynamicResource TextPrimaryColor}" FontSize="11" FontWeight="Bold" MaxWidth="120" TextTrimming="CharacterEllipsis"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
+                                </StackPanel>
+                            </Grid>
                         </Border>
 
                         <ItemsControl Grid.Row="1" ItemsSource="{Binding MouvementsList}" Margin="14,10,14,14">

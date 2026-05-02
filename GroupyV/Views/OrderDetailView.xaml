@@ -327,7 +327,7 @@
                                           Style="{StaticResource MaterialDesignOutlinedComboBox}" BorderBrush="{DynamicResource InputBorderColor}" Foreground="{DynamicResource TextPrimaryColor}" MinHeight="56">
                                     <ComboBox.Resources>
                                         <SolidColorBrush x:Key="MaterialDesignPaper" Color="#1A1C2E"/>
-                                        <SolidColorBrush x:Key="MaterialDesignBody" Color="White"/>
+                                        <SolidColorBrush x:Key="MaterialDesignBody"  Color="White"/>
                                     </ComboBox.Resources>
                                     <ComboBox.ItemContainerStyle>
                                         <Style TargetType="ComboBoxItem" BasedOn="{StaticResource MaterialDesignComboBoxItemStyle}">

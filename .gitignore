@@ -59,6 +59,9 @@ $RECYCLE.BIN/
 .LSOverride
 
 ## IDE
+# Claude / AI tools
+.claude/
+
 # JetBrains
 .idea/
 *.iml
@@ -67,3 +70,5 @@ $RECYCLE.BIN/
 .vscode/
 !.vscode/extensions.json
 !.vscode/settings.json
+# ZIP de distribution (trop volumineux pour GitHub)
+*.zip
